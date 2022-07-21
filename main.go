@@ -61,7 +61,7 @@ var db *sql.DB
 var err error
 
 func main() {
-	db, err = sql.Open("mysql", "root:ruckus1234@tcp(172.17.0.2:3306)/espp?parseTime=true")
+	db, err = sql.Open("mysql", "test:1@tcp(172.17.0.2:3306)/espp?parseTime=true")
 
 	if err != nil {
 		panic(err.Error())
@@ -69,8 +69,19 @@ func main() {
 
 	defer db.Close()
 
+	err = db.Ping()
+	if err != nil {
+		panic(err.Error())
+	}
 	fmt.Println("Successfully connected to MySQL database")
 
+	update, err := db.Query("UPDATE CVE SET comment = '11test7/21', solution = '11test7/21', commentator = 'ruckusIntern7/21' WHERE package = 'acl-2.2.51-14.el7';")
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	defer update.Close()
 	router := mux.NewRouter()
 
 	headers := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
@@ -79,10 +90,10 @@ func main() {
 
 	router.HandleFunc("/cve", getCve).Methods("GET")
 	router.HandleFunc("/cve", updateComment).Methods("PUT")
-	router.HandleFunc("/cve", deleteComment).Methods("DELETE")
 
-	fmt.Println("Server started on port 9000")
-	log.Fatal(http.ListenAndServe(":9000", handlers.CORS(headers, methods, origins)(router)))
+	fmt.Println("Server started on port 7000")
+	log.Fatal(http.ListenAndServe(":7000", handlers.CORS(headers, methods, origins)(router)))
+	
 }
 
 func getCve(w http.ResponseWriter, r *http.Request) {
@@ -158,24 +169,4 @@ func updateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "Package = %s was updated", params["package"])
-}
-
-func deleteComment(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-
-	statement, err := db.Prepare("DELETE FROM posts WHERE package = ?")
-
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	_, err = statement.Exec(params["package"])
-
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	fmt.Fprintf(w, "Package = %s was deleted", params["package"])
 }
