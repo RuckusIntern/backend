@@ -2,17 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"time"
 
-
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/handlers"
+	"github.com/gofiber/fiber/v2"
 
 )
 
@@ -69,34 +64,19 @@ func main() {
 
 	defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
-		panic(err.Error())
-	}
 	fmt.Println("Successfully connected to MySQL database")
 
-	update, err := db.Query("UPDATE CVE SET comment = '11test7/21', solution = '11test7/21', commentator = 'ruckusIntern7/21' WHERE package = 'acl-2.2.51-14.el7';")
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defer update.Close()
-	router := mux.NewRouter()
-
-	headers := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
-	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
-	origins := handlers.AllowedOrigins([]string{"*"})
-
-	router.HandleFunc("/cve", getCve).Methods("GET")
-	router.HandleFunc("/cve", updateComment).Methods("PUT")
-
-	fmt.Println("Server started on port 7000")
-	log.Fatal(http.ListenAndServe(":7000", handlers.CORS(headers, methods, origins)(router)))
+	app:=fiber.New()
+	Setup(app)
+	log.Fatal(app.Listen(":"+"7000"))
 	
 }
+func Setup(app *fiber.App){
+	app.Post("/get", getCve)
+}
 
-func getCve(w http.ResponseWriter, r *http.Request) {
+
+func getCve(c *fiber.Ctx) error{
 	var cves []CVE
 
 	result, err := db.Query("SELECT * FROM CVE")
@@ -119,54 +99,56 @@ func getCve(w http.ResponseWriter, r *http.Request) {
 		cves = append(cves, cve)
 	}
 
-	json.NewEncoder(w).Encode(cves)
+	return c.JSON(fiber.Map{
+		"message" : "success",
+	})
 }
 
-func updateComment(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
+// func updateComment(w http.ResponseWriter, r *http.Request) {
+// 	params := mux.Vars(r)
 
-	statement, err := db.Prepare("UPDATE CVE SET comment = ?, solution = ?, commentator = ? WHERE package = ?")
+// 	statement, err := db.Prepare("UPDATE CVE SET comment = ?, solution = ?, commentator = ? WHERE package = ?")
 
-	if err != nil {
-		panic(err.Error())
-	}
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+// 	body, err := ioutil.ReadAll(r.Body)
 
-	if err != nil {
-		panic(err.Error())
-	}
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
 
-	keyVal := make(map[string]string)
-	json.Unmarshal(body, &keyVal)
+// 	keyVal := make(map[string]string)
+// 	json.Unmarshal(body, &keyVal)
 
-	newComment := keyVal["comment"]
-	newSolution := keyVal["solution"]
-	newCommentator := keyVal["commentator"]
+// 	newComment := keyVal["comment"]
+// 	newSolution := keyVal["solution"]
+// 	newCommentator := keyVal["commentator"]
 
-	if newComment == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("Comment cannot be blank")
-		return
-	}
+// 	if newComment == "" {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		json.NewEncoder(w).Encode("Comment cannot be blank")
+// 		return
+// 	}
 
-	if newSolution == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("Solution cannot be blank")
-		return
-	}
+// 	if newSolution == "" {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		json.NewEncoder(w).Encode("Solution cannot be blank")
+// 		return
+// 	}
 
-	if newCommentator == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("Commentator cannot be blank")
-		return
-	}
+// 	if newCommentator == "" {
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		json.NewEncoder(w).Encode("Commentator cannot be blank")
+// 		return
+// 	}
 
-	_, err = statement.Exec(newComment, newSolution, newCommentator, params["package"])
+// 	_, err = statement.Exec(newComment, newSolution, newCommentator, params["package"])
 
-	if err != nil {
-		panic(err.Error())
-	}
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
 
-	fmt.Fprintf(w, "Package = %s was updated", params["package"])
-}
+// 	fmt.Fprintf(w, "Package = %s was updated", params["package"])
+// }
