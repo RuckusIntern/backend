@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 
 )
 
@@ -34,7 +35,7 @@ type Errata struct {
 type CVE struct {
 	Package          		string `json:"package"`
 	Cve_name       			string `json:"cve_name"`
-	Cvss_score    			string `json:"cvss_score"`
+	Cvss_score    			sql.NullString `json:"cvss_score"`
 	Cvss_status        		string `json:"cvss_status"`
 	Cve_url 				string `json:"cve_url"`
 	Severity 				string `json:"severity"`
@@ -45,10 +46,10 @@ type CVE struct {
 	Package_name 			string `json:"package_name"`
 	Package_version 		string `json:"package_version"`
 	Package_release 		string `json:"package_release"`
-	Comment 				string `json:"comment"`
-	Solution 				string `json:"solution"`
-	Date 					time.Time `json:"date"`
-	Commentator 			string `json:"commentator"`
+	Comment 				sql.NullString `json:"comment"`
+	Solution 				sql.NullString `json:"solution"`
+	Date 					sql.NullString `json:"date"`
+	Commentator 			sql.NullString `json:"commentator"`
 }
 
 
@@ -67,12 +68,11 @@ func main() {
 	fmt.Println("Successfully connected to MySQL database")
 
 	app:=fiber.New()
-	Setup(app)
+	app.Use(cors.New())
+	app.Get("/get", getCve)
+	app.Get("/update", updateCve)
 	log.Fatal(app.Listen(":"+"7000"))
 	
-}
-func Setup(app *fiber.App){
-	app.Post("/get", getCve)
 }
 
 
@@ -98,6 +98,19 @@ func getCve(c *fiber.Ctx) error{
 
 		cves = append(cves, cve)
 	}
+
+	return c.JSON(cves)
+}
+
+func updateCve(c *fiber.Ctx) error{
+	localtime := time.Now()
+	result, err := db.Query("UPDATE CVE SET comment = ?, solution = 'werew', commentator = 'intern' WHERE package = 'acl-2.2.51-14.el7'",localtime)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	defer result.Close()
 
 	return c.JSON(fiber.Map{
 		"message" : "success",
