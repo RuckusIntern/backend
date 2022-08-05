@@ -1,0 +1,6 @@
+# MySQL
+# Privileges : select
+username: guest
+password: 12345678
+host: 10.206.66.121
+port: 3306

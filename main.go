@@ -4,14 +4,25 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"io/ioutil"
 	"time"
 	"encoding/json"
+	"gopkg.in/yaml.v2"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 
 )
+
+type Config struct{
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
+}
+
+
 
 type AffectedPackageStatus struct {
 	Affected_package_name   string `json:"affected_package_name"`
@@ -58,7 +69,17 @@ var db *sql.DB
 var err error
 
 func main() {
-	db, err = sql.Open("mysql", "test:1@tcp(172.17.0.2:3306)/espp?parseTime=true")
+	yamlFile, err := ioutil.ReadFile("./config/config.yml")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	var config Config
+	err = yaml.Unmarshal(yamlFile, &config)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	db, err = sql.Open("mysql", config.Username+":"+config.Password+"@tcp("+config.Host+":"+config.Port+")/espp?parseTime=true")
 
 	if err != nil {
 		panic(err.Error())
